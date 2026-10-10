@@ -64,13 +64,13 @@ mcp = FastMCP(
 # ---------------------------------------------------------------------------
 # License 占位（Day 1 不做校验）
 # ---------------------------------------------------------------------------
+# 刻意不注册为 MCP 工具：付费层方案未定，Day 6 再决定是否对外暴露。
 
 
-@mcp.tool
 def check_license() -> dict:
     """查询当前许可证计划。
 
-    Day 1 占位实现：暂不校验，恒返回 free 计划。
+    内部函数，暂不暴露为 MCP 工具。Day 1 占位实现：暂不校验，恒返回 free 计划。
     """
     logger.info("check_license called -> plan=free (placeholder)")
     return {"plan": "free", "valid": True, "placeholder": True}

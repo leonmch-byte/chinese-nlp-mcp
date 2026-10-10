@@ -47,7 +47,6 @@ python3 -m venv .venv
 | 工具 | 状态 | 说明 |
 |---|---|---|
 | `hello_world` | ✅ 已实现 | 健康检查，返回 `Hello from Chinese NLP MCP` |
-| `check_license` | ✅ 已实现 | 占位实现，恒返回 `free` 计划 |
 
 ### 计划中
 
@@ -63,22 +62,20 @@ python3 -m venv .venv
 
 ## 开发
 
-### 独立验收（无需 GUI）
-
-```bash
-./.venv/Scripts/python.exe _verify_day1.py
-```
-
-脚本以 stdio 客户端协议直连 server.py，验证 `tools/list` 与 `tools/call`。
-
-### MCP Inspector
+验收统一走 Inspector 手工验证：
 
 ```bash
 npx @modelcontextprotocol/inspector \
   ./.venv/Scripts/python.exe server.py
 ```
 
-浏览器打开提示的地址（默认 http://localhost:6274），在 Tools 面板即可看到并调用 `hello_world`。
+浏览器打开提示的地址（默认 http://localhost:6274），在 Tools 面板即可看到并调用工具。
+
+### Day 2 状态
+
+| 工具 | 状态 | 说明 |
+|---|---|---|
+| `segment_chinese` | ✅ 已实现 | jieba 三模式（default / search / index），mode 白名单校验 |
 
 ## 路线图
 
