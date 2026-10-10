@@ -57,6 +57,17 @@ python3 -m venv .venv
 | `convert_pinyin` | `(text: str, style: str = "tone", separator: str = " ") -> str` | 拼音转换，`style` 支持 `tone` / `tone2` / `initials` / `first_letter` |
 | `detect_sensitive_words` | `(text: str, words: list[str] = []) -> dict` | **仅检测用户自定义词库**，默认词库为空 |
 
+> **`mode` 三模式说明**：jieba 0.42.1 顶层**没有** `cut_for_index`，
+> 且 `tokenize(mode=...)` 内部只区分 `default` 与"其他"，传 `index` 会
+> **静默降级为 search**。本项目显式将 `index` 映射到 `cut_for_search`，
+> 行为与 `search` 一致，避免给调用方"index 是独立模式"的错觉。
+>
+> `search` / `index` 下jieba 内部计算的 `(word, start, end)` 位置信息**不返回**，
+> 返回值统一为 `list[str]`。
+
+> **错误处理**：参数非法抛 `ValueError`，内部失败抛 `RuntimeError`，
+> 均由 fastmcp 转成 `isError=true`，工具签名保持纯净、不返回错误包装体。
+
 > `detect_sensitive_words` 刻意不内置任何词库。仅接受调用方传入的 `words`，
 > 返回 `{matches: [{word, index}], clean: bool}`。
 
@@ -80,7 +91,7 @@ npx @modelcontextprotocol/inspector \
 ## 路线图
 
 - [x] Day 1 — 项目骨架 + `hello_world` + Inspector 验收
-- [ ] Day 2 — `segment_chinese`（jieba）
+- [x] Day 2 — `segment_chinese`（jieba 三模式）
 - [ ] Day 3 — `convert_pinyin`（pypinyin）
 - [ ] Day 4 — `extract_keywords`（TF-IDF）
 - [ ] Day 5 — `detect_sensitive_words`（AC 自动机）

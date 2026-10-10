@@ -23,6 +23,8 @@ os.environ.setdefault("FASTMCP_SHOW_SERVER_BANNER", "false")
 
 from fastmcp import FastMCP
 
+from tools.segment import segment_chinese as _segment_chinese
+
 # ---------------------------------------------------------------------------
 # 日志：强制走 stderr，严禁污染 stdout
 # ---------------------------------------------------------------------------
@@ -86,6 +88,26 @@ def hello_world() -> str:
     """健康检查工具。返回固定文本，用于验证 MCP 连接与工具注册是否正常。"""
     logger.info("hello_world called")
     return "Hello from Chinese NLP MCP"
+
+
+# ---------------------------------------------------------------------------
+# 中文分词
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool
+def segment_chinese(text: str, mode: str = "default") -> list[str]:
+    """对中文文本分词，返回词列表。
+
+    Args:
+        text: 待分词的中文文本。
+        mode: ``default``（标准）、``search``（搜索模式，额外切出 2/3 元组）、
+            ``index``（索引模式，行为同 search）。
+
+    Returns:
+        分词结果列表。search / index 模式下 jieba 内部计算的位置信息不返回。
+    """
+    return _segment_chinese(text=text, mode=mode)
 
 
 # ---------------------------------------------------------------------------
