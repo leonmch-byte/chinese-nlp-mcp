@@ -10,3 +10,4 @@ _verify_day*_stderr.txt
 _evidence_*.py
 _evidence_*.txt
 _schema_dump.txt
+_dbg*.txt

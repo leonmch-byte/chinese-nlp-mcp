@@ -26,6 +26,7 @@ from fastmcp import FastMCP
 from tools.keywords import extract_keywords as _extract_keywords
 from tools.pinyin import convert_pinyin as _convert_pinyin
 from tools.segment import segment_chinese as _segment_chinese
+from tools.sensitive import detect_sensitive_words as _detect_sensitive_words
 
 # ---------------------------------------------------------------------------
 # 日志：强制走 stderr，严禁污染 stdout
@@ -154,6 +155,35 @@ def extract_keywords(text: str, topN: int = 10) -> list[dict]:
         weight 为 TF-IDF 原始分，未归一化，可大于 1.0。
     """
     return _extract_keywords(text=text, topN=topN)
+
+
+# ---------------------------------------------------------------------------
+# 自定义敏感词检测
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool
+def detect_sensitive_words(
+    text: str, words: list[str] | None = None
+) -> dict:
+    """在文本中检测调用方自定义的敏感词。
+
+    ⚠️ 本工具**不含任何内置词库**，words 是唯一检测依据。
+    传空列表或 None 等同于不检测，直接返回 {"matches": [], "clean": true}。
+
+    重叠匹配策略：返回**全部**命中，不去重、不做最长/最短优先裁剪。
+    调用方是自己词库的负责人，最清楚"命中什么"才是关心的信号；
+    拿到全部命中后，可按 index 自行裁剪或聚合。
+
+    Args:
+        text: 待检测文本。
+        words: 调用方自定义词库。
+
+    Returns:
+        {"matches": [{"word": str, "index": int}, ...], "clean": bool}。
+        index 为词起始位置的字符索引（中文按 1 字计）。
+    """
+    return _detect_sensitive_words(text=text, words=words)
 
 
 # ---------------------------------------------------------------------------

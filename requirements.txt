@@ -4,3 +4,7 @@
 fastmcp>=2.0.0
 jieba>=0.42.1
 pypinyin>=0.51.0
+
+# 敏感词检测：Aho-Corasick 自动机。
+# 提供 cp313 win_amd64 预编译 wheel，Windows 下无需本地编译工具链。
+pyahocorasick>=2.1.0

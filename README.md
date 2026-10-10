@@ -50,12 +50,27 @@ python3 -m venv .venv
 | `segment_chinese` | `(text: str, mode: str = "default") -> list[str]` | jieba 分词，`mode` 支持 `default` / `search` / `index` |
 | `convert_pinyin` | `(text: str, style: str = "tone", separator: str = " ") -> str` | pypinyin 拼音转换，`style` 支持 `tone` / `tone2` / `initials` / `first_letter` |
 | `extract_keywords` | `(text: str, topN: int = 10) -> list[dict]` | TF-IDF 关键词提取，返回 `[{word, weight}]`，按权重降序 |
+| `detect_sensitive_words` | `(text: str, words: list[str] \| None = None) -> dict` | **自定义**敏感词检测，Aho-Corasick 自动机 |
 
-### 计划中工具
-
-| 工具 | 签名 | 说明 |
-|---|---|---|
-| `detect_sensitive_words` | `(text: str, words: list[str] = []) -> dict` | **仅检测用户自定义词库**，默认词库为空 |
+> 🔴 **`detect_sensitive_words` 红线（不可协商）**
+>
+> 本工具**不含任何内置词库，也不内置任何示例词**。词库唯一来源是调用方传入的
+> `words` 参数。传 `[]` 或 `None` 等同于不检测，直接返回
+> `{"matches": [], "clean": true}`。
+> 这是项目级设计红线：内容安全策略必须由使用者自己掌控，工具不得替他预设。
+>
+> **重叠匹配策略：返回全部命中，不去重、不做最长/最短优先裁剪。**
+> 理由：调用方是自己词库的负责人，最清楚"命中什么"才是关心的信号。
+> 若工具替他裁剪（例如只留最长匹配），他既无法知道被裁掉的短词也命中了，
+> 也无法对重叠区间做差异化处置。拿到全部命中后，调用方完全可以按 `index`
+> 自行裁剪或聚合，而工具不做这个预设立场。
+>
+> 例：`text="中华人民共和国"`, `words=["中国人民","人民"]`
+> → 返回 2 条命中，`index` 分别为 `0` 和 `2`。
+>
+> **实现方案**：pyahocorasick（实测 Windows + Python 3.13 有预编译 wheel，
+> 无需本地编译；4813 词库 × 10 万字文本耗时 0.008 秒）。
+> `index` 是**字符索引**（中文按 1 字计，非字节索引）。
 
 > **`extract_keywords` 说明**：
 > - 底层 jieba 的参数名是 `topK`（非 `topN`），且需 `withWeight=True` 才会返回权重。
@@ -64,6 +79,8 @@ python3 -m venv .venv
 >   不是概率或百分比。
 > - 返回顺序已按权重降序；`topN` 超过可提取词数时返回全部词，**不报错**。
 > - 本工具是四个业务工具中唯一返回 `list[dict]` 的，属有意设计。
+> - **中英混合文本中，英文单词会被 jieba 作为独立 token 保留并参与 TF-IDF 计算，
+>   不会被过滤**（例：`Python 编程语言很强大` → 提取出 `Python`，weight 3.98）。
 
 > **`style` 四种风格说明**：实测 pypinyin 0.55.0 的 `lazy_pinyin(text, style="bad")`
 > **不会报错**，而是静默降级为 `Style.NORMAL`（带调拼音）。因此本工具在入口处
@@ -121,7 +138,7 @@ npx @modelcontextprotocol/inspector \
 - [x] Day 2 — `segment_chinese`（jieba 三模式）
 - [x] Day 3 — `convert_pinyin`（pypinyin 四 style）
 - [x] Day 4 — `extract_keywords`（TF-IDF）
-- [ ] Day 5 — `detect_sensitive_words`（AC 自动机）
+- [x] Day 5 — `detect_sensitive_words`（Aho-Corasick）
 
 每个工具独立实现、独立验收、独立提交。
 
