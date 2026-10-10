@@ -1,0 +1,6 @@
+# chinese-nlp-mcp dependencies
+# Install into a dedicated venv, never into the system Python.
+
+fastmcp>=2.0.0
+jieba>=0.42.1
+pypinyin>=0.51.0
