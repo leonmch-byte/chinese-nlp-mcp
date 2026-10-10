@@ -1,0 +1,66 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "chinese-nlp-mcp"
+version = "0.1.0"
+description = "Chinese NLP capabilities as an MCP Server — segmentation, pinyin, TF-IDF keywords, and custom sensitive-word detection. Local stdio, fully offline."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "chinese-nlp-mcp contributors" }]
+keywords = [
+    "mcp",
+    "model-context-protocol",
+    "chinese",
+    "nlp",
+    "segmentation",
+    "pinyin",
+    "jieba",
+    "pypinyin",
+    "tf-idf",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: Chinese (Simplified)",
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Text Processing :: Linguistic",
+]
+
+dependencies = [
+    "fastmcp>=2.0.0",
+    "jieba>=0.42.1",
+    "pypinyin>=0.51.0",
+    "pyahocorasick>=2.1.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/example/chinese-nlp-mcp"
+Issues = "https://github.com/example/chinese-nlp-mcp/issues"
+
+[project.scripts]
+chinese-nlp-mcp = "server:main"
+
+[tool.hatch.build.targets.wheel]
+# server.py 是顶层单文件模块，tools/ 是顶层包。
+# 两者都必须打进 wheel，否则入口点 server:main 会在安装后 ImportError。
+include = [
+    "server.py",
+    "tools/**/*.py",
+]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "server.py",
+    "tools/**/*.py",
+    "README.md",
+    "requirements.txt",
+]

@@ -11,3 +11,8 @@ _evidence_*.py
 _evidence_*.txt
 _schema_dump.txt
 _dbg*.txt
+
+# 构建产物
+dist/
+build/
+*.egg-info/

@@ -190,8 +190,20 @@ def detect_sensitive_words(
 # 入口
 # ---------------------------------------------------------------------------
 
-if __name__ == "__main__":
+
+def main() -> None:
+    """控制台脚本入口。
+
+    PyPI 入口点 ``chinese-nlp-mcp = "server:main"`` 绑定到此函数，
+    使用户可直接 ``uvx chinese-nlp-mcp`` 或 ``chinese-nlp-mcp`` 启动。
+
+    保持 stdio transport + 关闭 banner：纯本地运行、不开放端口、不联网。
+    """
     # transport="stdio" 是 fastmcp 的默认值，此处显式声明以表明意图。
     # show_banner=False 关闭 ASCII banner，纯本地运行不产生任何网络请求。
     logger.info("starting chinese-nlp-mcp on stdio transport")
     mcp.run(transport="stdio", show_banner=False)
+
+
+if __name__ == "__main__":
+    main()

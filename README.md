@@ -15,7 +15,30 @@
 
 ## 安装
 
+### 方式一：uvx 一键运行（推荐，无需安装）
+
 ```bash
+uvx chinese-nlp-mcp
+```
+
+需要先安装 uv：<https://docs.astral.sh/uv/getting-started/installation/>
+（macOS/Linux 用 `curl -LsSf https://astral.sh/uv/install.sh | sh`，
+Windows 用 `irm https://astral.sh/uv/install.ps1 | iex`）
+
+### 方式二：pip 安装
+
+```bash
+pip install chinese-nlp-mcp
+# 安装后同样可用命令行启动
+chinese-nlp-mcp
+```
+
+### 方式三：从源码安装（备选，开发用）
+
+```bash
+git clone https://github.com/example/chinese-nlp-mcp
+cd chinese-nlp-mcp
+
 # Windows (Git Bash)
 python -m venv .venv
 ./.venv/Scripts/python.exe -m pip install -r requirements.txt
@@ -27,7 +50,32 @@ python3 -m venv .venv
 
 ## 客户端接入
 
-在 MCP 客户端（如 Claude Desktop / Cursor / VS Code）的配置中填入：
+推荐用 `uvx`，无需关心 Python 环境：
+
+```json
+{
+  "mcpServers": {
+    "chinese-nlp-mcp": {
+      "command": "uvx",
+      "args": ["chinese-nlp-mcp"]
+    }
+  }
+}
+```
+
+若用 pip 安装（方式二）：
+
+```json
+{
+  "mcpServers": {
+    "chinese-nlp-mcp": {
+      "command": "chinese-nlp-mcp"
+    }
+  }
+}
+```
+
+若从源码安装（方式三）：
 
 ```json
 {
@@ -71,6 +119,11 @@ python3 -m venv .venv
 > **实现方案**：pyahocorasick（实测 Windows + Python 3.13 有预编译 wheel，
 > 无需本地编译；4813 词库 × 10 万字文本耗时 0.008 秒）。
 > `index` 是**字符索引**（中文按 1 字计，非字节索引）。
+>
+> **返回值读取方式**：本工具返回 `dict`，fastmcp 会将其**直接展开**为
+> `structuredContent`，**不额外加 `result` 包装层**（这与返回 `list`/`str` 的
+> 工具不同，后者会被包成 `structuredContent.result`）。
+> 调用方应从 `structuredContent.matches` 与 `structuredContent.clean` 取值。
 
 > **`extract_keywords` 说明**：
 > - 底层 jieba 的参数名是 `topK`（非 `topN`），且需 `withWeight=True` 才会返回权重。
