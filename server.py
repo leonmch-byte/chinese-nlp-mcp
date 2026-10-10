@@ -23,6 +23,7 @@ os.environ.setdefault("FASTMCP_SHOW_SERVER_BANNER", "false")
 
 from fastmcp import FastMCP
 
+from tools.pinyin import convert_pinyin as _convert_pinyin
 from tools.segment import segment_chinese as _segment_chinese
 
 # ---------------------------------------------------------------------------
@@ -109,6 +110,29 @@ def segment_chinese(text: str, mode: str = "default") -> list[str]:
         分词结果列表。search / index 模式下 jieba 内部计算的位置信息不返回。
     """
     return _segment_chinese(text=text, mode=mode)
+
+
+# ---------------------------------------------------------------------------
+# 中文转拼音
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool
+def convert_pinyin(
+    text: str, style: str = "tone", separator: str = " "
+) -> str:
+    """将中文文本转换为拼音字符串。
+
+    Args:
+        text: 待转换的中文文本。
+        style: ``tone`` 带声调符号（zhōng）；``tone2`` 数字声调（zho1ng）；
+            ``initials`` 声母（zh）；``first_letter`` 首字母（z）。
+        separator: 词与词之间的拼接分隔符，默认空格。
+
+    Returns:
+        以 separator 拼接的拼音字符串。
+    """
+    return _convert_pinyin(text=text, style=style, separator=separator)
 
 
 # ---------------------------------------------------------------------------

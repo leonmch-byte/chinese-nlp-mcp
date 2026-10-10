@@ -42,25 +42,26 @@ python3 -m venv .venv
 
 ## 工具
 
-### Day 1 状态
+### 已实现工具
 
-| 工具 | 状态 | 说明 |
+| 工具 | 签名 | 说明 |
 |---|---|---|
-| `hello_world` | ✅ 已实现 | 健康检查，返回 `Hello from Chinese NLP MCP` |
+| `hello_world` | `() -> str` | 健康检查，返回 `Hello from Chinese NLP MCP` |
+| `segment_chinese` | `(text: str, mode: str = "default") -> list[str]` | jieba 分词，`mode` 支持 `default` / `search` / `index` |
+| `convert_pinyin` | `(text: str, style: str = "tone", separator: str = " ") -> str` | pypinyin 拼音转换，`style` 支持 `tone` / `tone2` / `initials` / `first_letter` |
 
-### Day 2 状态
-
-| 工具 | 签名 | 状态 | 说明 |
-|---|---|---|---|
-| `segment_chinese` | `(text: str, mode: str = "default") -> list[str]` | ✅ 已实现 | jieba 分词，`mode` 支持 `default` / `search` / `index` |
-
-### 计划中
+### 计划中工具
 
 | 工具 | 签名 | 说明 |
 |---|---|---|
 | `extract_keywords` | `(text: str, topN: int = 10) -> list[dict]` | 关键词提取，返回 `[{word, weight}]` |
-| `convert_pinyin` | `(text: str, style: str = "tone", separator: str = " ") -> str` | 拼音转换，`style` 支持 `tone` / `tone2` / `initials` / `first_letter` |
 | `detect_sensitive_words` | `(text: str, words: list[str] = []) -> dict` | **仅检测用户自定义词库**，默认词库为空 |
+
+> **`style` 四种风格说明**：实测 pypinyin 0.55.0 的 `lazy_pinyin(text, style="bad")`
+> **不会报错**，而是静默降级为 `Style.NORMAL`（带调拼音）。因此本工具在入口处
+> 强制白名单校验，不把非法style 透传给底层库。
+>
+> 取值参考：`tone` → `zhōng`、`tone2` → `zho1ng`、`initials` → `zh`、`first_letter` → `z`。
 
 > **`mode` 三模式说明**：jieba 0.42.1 顶层**没有** `cut_for_index`，
 > 且 `tokenize(mode=...)` 内部只区分 `default` 与"其他"，传 `index` 会
@@ -72,6 +73,13 @@ python3 -m venv .venv
 
 > **错误处理**：参数非法抛 `ValueError`，内部失败抛 `RuntimeError`，
 > 均由 fastmcp 转成 `isError=true`，工具签名保持纯净、不返回错误包装体。
+
+> **测试规约**（Day 3 锁定）：
+> 1. 反例必须同时断言 `isError=true` **且** 错误文案包含预期片段。只看标志位会漏过
+>    "底层库静默降级"类回归——错误可能被包装成别的异常，`isError` 照样为true。
+> 2. stdio 子进程的 `stderr` 必须接文件或 `DEVNULL`，**绝不接 `subprocess.PIPE`**。
+>    fastmcp 报错时 rich 会打印几十 KB traceback，塞满管道会导致 server 侧写阻塞、
+>    响应永远发不出（表现为假死/超时，而非真实崩溃）。
 
 > `detect_sensitive_words` 刻意不内置任何词库。仅接受调用方传入的 `words`，
 > 返回 `{matches: [{word, index}], clean: bool}`。
@@ -97,7 +105,7 @@ npx @modelcontextprotocol/inspector \
 
 - [x] Day 1 — 项目骨架 + `hello_world` + Inspector 验收
 - [x] Day 2 — `segment_chinese`（jieba 三模式）
-- [ ] Day 3 — `convert_pinyin`（pypinyin）
+- [x] Day 3 — `convert_pinyin`（pypinyin 四 style）
 - [ ] Day 4 — `extract_keywords`（TF-IDF）
 - [ ] Day 5 — `detect_sensitive_words`（AC 自动机）
 
