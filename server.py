@@ -101,8 +101,9 @@ def segment_chinese(text: str, mode: str = "default") -> list[str]:
 
     Args:
         text: 待分词的中文文本。
-        mode: ``default``（标准）、``search``（搜索模式，额外切出 2/3 元组）、
-            ``index``（索引模式，行为同 search）。
+        mode: 分词模式。``default`` 标准分词；``search`` 搜索模式，
+            会额外切出词内部的 2/3 元组；``index`` 索引模式，
+            行为与 ``search`` 一致。
 
     Returns:
         分词结果列表。search / index 模式下 jieba 内部计算的位置信息不返回。

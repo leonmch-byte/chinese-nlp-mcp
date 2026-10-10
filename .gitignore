@@ -6,3 +6,5 @@ venv/
 .DS_Store
 *.log
 _verify_day1.py
+_evidence_*.py
+_evidence_*.txt

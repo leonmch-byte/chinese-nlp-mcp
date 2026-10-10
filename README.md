@@ -48,11 +48,16 @@ python3 -m venv .venv
 |---|---|---|
 | `hello_world` | ✅ 已实现 | 健康检查，返回 `Hello from Chinese NLP MCP` |
 
+### Day 2 状态
+
+| 工具 | 签名 | 状态 | 说明 |
+|---|---|---|---|
+| `segment_chinese` | `(text: str, mode: str = "default") -> list[str]` | ✅ 已实现 | jieba 分词，`mode` 支持 `default` / `search` / `index` |
+
 ### 计划中
 
 | 工具 | 签名 | 说明 |
 |---|---|---|
-| `segment_chinese` | `(text: str, mode: str = "default") -> list[str]` | 分词，`mode` 支持 `default` / `search` / `index` |
 | `extract_keywords` | `(text: str, topN: int = 10) -> list[dict]` | 关键词提取，返回 `[{word, weight}]` |
 | `convert_pinyin` | `(text: str, style: str = "tone", separator: str = " ") -> str` | 拼音转换，`style` 支持 `tone` / `tone2` / `initials` / `first_letter` |
 | `detect_sensitive_words` | `(text: str, words: list[str] = []) -> dict` | **仅检测用户自定义词库**，默认词库为空 |
