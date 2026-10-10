@@ -49,19 +49,30 @@ python3 -m venv .venv
 | `hello_world` | `() -> str` | 健康检查，返回 `Hello from Chinese NLP MCP` |
 | `segment_chinese` | `(text: str, mode: str = "default") -> list[str]` | jieba 分词，`mode` 支持 `default` / `search` / `index` |
 | `convert_pinyin` | `(text: str, style: str = "tone", separator: str = " ") -> str` | pypinyin 拼音转换，`style` 支持 `tone` / `tone2` / `initials` / `first_letter` |
+| `extract_keywords` | `(text: str, topN: int = 10) -> list[dict]` | TF-IDF 关键词提取，返回 `[{word, weight}]`，按权重降序 |
 
 ### 计划中工具
 
 | 工具 | 签名 | 说明 |
 |---|---|---|
-| `extract_keywords` | `(text: str, topN: int = 10) -> list[dict]` | 关键词提取，返回 `[{word, weight}]` |
 | `detect_sensitive_words` | `(text: str, words: list[str] = []) -> dict` | **仅检测用户自定义词库**，默认词库为空 |
+
+> **`extract_keywords` 说明**：
+> - 底层 jieba 的参数名是 `topK`（非 `topN`），且需 `withWeight=True` 才会返回权重。
+> - `weight` 是 **TF-IDF 原始分，未归一化**，值域通常 0 ~ 6，**可大于 1.0**
+>   （例："天安门广场" → 1.6316）。它表示该词在当前语料中的重要程度，
+>   不是概率或百分比。
+> - 返回顺序已按权重降序；`topN` 超过可提取词数时返回全部词，**不报错**。
+> - 本工具是四个业务工具中唯一返回 `list[dict]` 的，属有意设计。
 
 > **`style` 四种风格说明**：实测 pypinyin 0.55.0 的 `lazy_pinyin(text, style="bad")`
 > **不会报错**，而是静默降级为 `Style.NORMAL`（带调拼音）。因此本工具在入口处
 > 强制白名单校验，不把非法style 透传给底层库。
 >
 > 取值参考：`tone` → `zhōng`、`tone2` → `zho1ng`、`initials` → `zh`、`first_letter` → `z`。
+>
+> **`tone2` 标注规则**：遵循 pypinyin 原生命名规则，声调数字标注在**元音后**
+> （如 `zho1ng`），而非词尾（`zhong1`）。这是 pypinyin 的既有行为，非缺陷。
 
 > **`mode` 三模式说明**：jieba 0.42.1 顶层**没有** `cut_for_index`，
 > 且 `tokenize(mode=...)` 内部只区分 `default` 与"其他"，传 `index` 会
@@ -80,6 +91,9 @@ python3 -m venv .venv
 > 2. stdio 子进程的 `stderr` 必须接文件或 `DEVNULL`，**绝不接 `subprocess.PIPE`**。
 >    fastmcp 报错时 rich 会打印几十 KB traceback，塞满管道会导致 server 侧写阻塞、
 >    响应永远发不出（表现为假死/超时，而非真实崩溃）。
+> 3. **提交前必须用 `git status` 检查暂存区**，确认不含本地临时文件；
+>    **禁止 `git add -A` 后直接 commit**。本地取证脚本、stderr 日志等
+>    必须先确认已被 `.gitignore` 覆盖。
 
 > `detect_sensitive_words` 刻意不内置任何词库。仅接受调用方传入的 `words`，
 > 返回 `{matches: [{word, index}], clean: bool}`。
@@ -106,7 +120,7 @@ npx @modelcontextprotocol/inspector \
 - [x] Day 1 — 项目骨架 + `hello_world` + Inspector 验收
 - [x] Day 2 — `segment_chinese`（jieba 三模式）
 - [x] Day 3 — `convert_pinyin`（pypinyin 四 style）
-- [ ] Day 4 — `extract_keywords`（TF-IDF）
+- [x] Day 4 — `extract_keywords`（TF-IDF）
 - [ ] Day 5 — `detect_sensitive_words`（AC 自动机）
 
 每个工具独立实现、独立验收、独立提交。

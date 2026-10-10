@@ -23,6 +23,7 @@ os.environ.setdefault("FASTMCP_SHOW_SERVER_BANNER", "false")
 
 from fastmcp import FastMCP
 
+from tools.keywords import extract_keywords as _extract_keywords
 from tools.pinyin import convert_pinyin as _convert_pinyin
 from tools.segment import segment_chinese as _segment_chinese
 
@@ -133,6 +134,26 @@ def convert_pinyin(
         以 separator 拼接的拼音字符串。
     """
     return _convert_pinyin(text=text, style=style, separator=separator)
+
+
+# ---------------------------------------------------------------------------
+# 关键词提取
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool
+def extract_keywords(text: str, topN: int = 10) -> list[dict]:
+    """用 TF-IDF 从中文文本中提取关键词，按权重降序返回。
+
+    Args:
+        text: 待分析的文本，可中英混合。
+        topN: 返回关键词数量上限。超过可提取词数时返回全部词，不报错。
+
+    Returns:
+        形如 ``[{"word": "北京", "weight": 1.55}, ...]`` 的列表。
+        weight 为 TF-IDF 原始分，未归一化，可大于 1.0。
+    """
+    return _extract_keywords(text=text, topN=topN)
 
 
 # ---------------------------------------------------------------------------
