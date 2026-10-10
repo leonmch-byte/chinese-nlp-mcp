@@ -36,7 +36,7 @@ chinese-nlp-mcp
 ### 方式三：从源码安装（备选，开发用）
 
 ```bash
-git clone https://github.com/example/chinese-nlp-mcp
+git clone https://github.com/leonmch-byte/chinese-nlp-mcp
 cd chinese-nlp-mcp
 
 # Windows (Git Bash)
