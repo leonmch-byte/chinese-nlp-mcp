@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "chinese-nlp-mcp"
-version = "0.1.1"
+version = "0.2.0"
 description = "Chinese NLP capabilities as an MCP Server — segmentation, pinyin, TF-IDF keywords, and custom sensitive-word detection. Local stdio, fully offline."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -52,17 +52,22 @@ Changelog = "https://github.com/leonmch-byte/chinese-nlp-mcp/blob/main/CHANGELOG
 chinese-nlp-mcp = "server:main"
 
 [tool.hatch.build.targets.wheel]
-# server.py 是顶层单文件模块，tools/ 是顶层包。
-# 两者都必须打进 wheel，否则入口点 server:main 会在安装后 ImportError。
+# server.py 是顶层单文件模块，tools/ 与 licensing/ 是顶层包。
+# 三者都必须打进 wheel，否则入口点 server:main 会在安装后 ImportError。
+# ⚠️ v0.1.x 漏了 licensing/ —— P1 起 server.py 依赖它，
+#    漏打包会让所有安装用户直接启动失败。改动此处后必须重建并
+#    用 `unzip -l dist/*.whl` 复核内容。
 include = [
     "server.py",
     "tools/**/*.py",
+    "licensing/**/*.py",
 ]
 
 [tool.hatch.build.targets.sdist]
 include = [
     "server.py",
     "tools/**/*.py",
+    "licensing/**/*.py",
     "README.md",
     "requirements.txt",
 ]

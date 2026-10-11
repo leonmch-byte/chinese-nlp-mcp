@@ -6,6 +6,7 @@ P1 范围：**纯本地计量，不含任何网络请求**。
 - `store`   StateStore —— HMAC 签名、防日期回拨、7 天历史剪枝
 - `quota`   QuotaGuard —— 次数限制 + 参数上限
 - `tier`    TierProvider —— P1 恒为 free，P3 替换实现
+- `gumroad` Gumroad 产品常量（P1 只提供常量，不发网络请求；验证属P3）
 
 硬性约束（勿破坏）：
 1. 任何内部异常都不允许让服务器不可用 —— 全部吞掉并放行，只记 stderr。
@@ -15,6 +16,7 @@ P1 范围：**纯本地计量，不含任何网络请求**。
 
 from .devices import MAX_DEVICES, check_device, known_machines, machine_id
 from .errors import ProFeatureRequired, QuotaExceeded
+from .gumroad import PRODUCT_ID, PRODUCT_URL, UPGRADE_URL, VERIFY_ENDPOINT
 from .paths import resolve_state_dir
 from .quota import FREE_LIMITS, FREE_MAX_TEXT_LEN, PAID_SOFT_CAP, QuotaGuard
 from .store import StateStore
@@ -34,6 +36,10 @@ __all__ = [
     "known_machines",
     "machine_id",
     "MAX_DEVICES",
+    "PRODUCT_ID",
+    "PRODUCT_URL",
+    "VERIFY_ENDPOINT",
+    "UPGRADE_URL",
 ]
 
-__version__ = "0.1.1-p1d"
+__version__ = "0.2.0"

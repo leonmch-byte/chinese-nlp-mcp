@@ -7,12 +7,14 @@
 
 ## [Unreleased]
 
-### P1 付费层 —— 本地计量（⚠️ 行为变化，升级必读）
+## [0.2.0] - 2026-10-11
+
+P1 付费层 —— 本地计量（⚠️ 行为变化，升级必读）。
 
 P1 引入**每日调用配额**。所有工具仍然免费可用，只是有次数上限。
-本阶段**完全离线**：没有 license key、没有 Gumroad 验证、没有任何网络请求。
+本阶段**完全离线**：没有 license key 校验、没有网络请求、不发送任何数据。
 
-#### 行为变化
+### 行为变化
 
 - **免费层新增每日配额**（每个自然日按 UTC 00:00 重置）：
 
@@ -27,11 +29,13 @@ P1 引入**每日调用配额**。所有工具仍然免费可用，只是有次�
   否则客户端会误判服务器故障。
 
 - **达到上限时**：对应工具返回 `isError: true`，并给出包含四要素的引导文案
-  —— 当前限制、重置时间、升级权益、升级链接（`$19` 买断，Gumroad 链接为占位符，
-  产品页创建后替换）。批量 API 属Pro 功能，免费层调用会返回升级引导错误。
+  —— 当前限制、重置时间、升级权益、升级链接（`$19` 买断，
+  链接指向 https://wolfmanchao.gumroad.com/l/chinese-nlp-mcp-pro）。
+  批量 API 属Pro 功能，免费层调用会返回升级引导错误。
 
-- **网络完全离线**：P1 不做任何 license 验证，不发送任何数据。
+- **网络完全离线**：P1 不做任何 license 校验，不发送任何数据。
   所有计数只写在本地状态文件里。
+  ⚠️ License Key 的 Gumroad 在线验证属**后续版本**（P3）才会引入。
 
 - **单次输入上限**（免费层）：
 
@@ -41,14 +45,19 @@ P1 引入**每日调用配额**。所有工具仍然免费可用，只是有次�
   | 自定义词库条数 | 1,000 条 | `detect_sensitive_words` |
   | `topN` | 50 | `extract_keywords` |
 
-#### 新增
+### 新增
 
-- `licensing/` 包：跨平台状态目录解析、配额闸门、tier 判定、设备记录。
-  该包**对 MCP 框架零依赖**（AST 级校验通过），MCP 耦合集中在 `server.py`
-  的 `@wrap_quota` 装饰器一处。
+- `licensing/` 包：跨平台状态目录解析、配额闸门、tier 判定、设备记录、
+  Gumroad 产品常量。该包**对 MCP 框架零依赖**（AST 级校验通过），
+  MCP 耦合集中在 `server.py` 的 `@wrap_quota` 装饰器一处。
+
+- `licensing/gumroad.py`：Gumroad `PRODUCT_ID` / `PRODUCT_URL` /
+  `VERIFY_ENDPOINT` 常量。所有引导文案统一引用常量，不再硬编码 URL。
+
 - 计数持久化 + 防篡改：HMAC-SHA256 双层绑定（`machine_id` + 本地密钥），
   日期回拨检测，7 天历史剪枝，原子写（临时文件 + `os.replace`）。
   签名校验失败时**保守按满额处理**（失效安全）。
+
 - 状态目录：
   - Windows: `%LOCALAPPDATA%\chinese-nlp-mcp\`
   - macOS: `~/Library/Application Support/chinese-nlp-mcp/`
@@ -59,7 +68,7 @@ P1 引入**每日调用配额**。所有工具仍然免费可用，只是有次�
 
 - 设备记录（**仅告警，绝不拒绝**）：启动时记录本机 `machine_id`
   （只存 `sha256` 前 16 字符，不存明文）。**允许 3 个设备**——第 1/2/3 台
-  正常使用，第 4 台起向 stderr 输出告警，功能完全不受影响。
+  正常使用，第 4 台起向 stderr输出告警，功能完全不受影响。
   告警文案中的 N 为出现过的设备总数。误伤已付费用户的代价远高于放过共享者。
 
   设`CHINESE_NLP_DEVICE_RESET=1` 可清空设备名单（只保留当前机器），
@@ -120,6 +129,7 @@ P1 引入**每日调用配额**。所有工具仍然免费可用，只是有次�
 - hatchling 构建后端，Python >= 3.10。
 - 控制台入口 `chinese-nlp-mcp`，支持 `uvx chinese-nlp-mcp` 一键运行。
 
-[Unreleased]: https://github.com/leonmch-byte/chinese-nlp-mcp/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/leonmch-byte/chinese-nlp-mcp/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/leonmch-byte/chinese-nlp-mcp/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/leonmch-byte/chinese-nlp-mcp/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/leonmch-byte/chinese-nlp-mcp/releases/tag/v0.1.0

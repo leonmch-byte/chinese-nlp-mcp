@@ -12,6 +12,7 @@ from __future__ import annotations
 import logging
 
 from .errors import QuotaExceeded
+from .gumroad import UPGRADE_URL
 from .store import StateStore, is_full_sentinel, today_str
 
 log = logging.getLogger("chinese_nlp_mcp.licensing")
@@ -146,7 +147,7 @@ class QuotaGuard:
                         "Pro unlocks: batch API (100 texts per call), "
                         "custom dictionaries, priority support.\n"
                         "$19 one-time — no subscription.\n"
-                        "Upgrade: https://gumroad.com/l/chinese-nlp-mcp-pro"
+                        f"Upgrade: {UPGRADE_URL}"
                     ),
                 )
 
@@ -163,7 +164,7 @@ class QuotaGuard:
                         "Pro unlocks: batch API (100 texts per call), "
                         "custom dictionaries, priority support.\n"
                         "$19 one-time — no subscription.\n"
-                        "Upgrade: https://gumroad.com/l/chinese-nlp-mcp-pro"
+                        f"Upgrade: {UPGRADE_URL}"
                     ),
                 )
 
@@ -180,7 +181,7 @@ class QuotaGuard:
                     "Pro unlocks: batch API (100 texts per call), "
                     "custom dictionaries, priority support.\n"
                     "$19 one-time — no subscription.\n"
-                    "Upgrade: https://gumroad.com/l/chinese-nlp-mcp-pro"
+                    f"Upgrade: {UPGRADE_URL}"
                 ),
             )
 
@@ -207,6 +208,6 @@ class QuotaGuard:
                     "Pro unlocks: batch API (100 texts per call), "
                     "custom dictionaries, priority support.\n"
                     "$19 one-time — no subscription.\n"
-                    "Upgrade: https://gumroad.com/l/chinese-nlp-mcp-pro"
+                    f"Upgrade: {UPGRADE_URL}"
                 ),
             )

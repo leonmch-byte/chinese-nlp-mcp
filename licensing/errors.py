@@ -21,7 +21,11 @@
 
 from __future__ import annotations
 
-UPGRADE_URL = "https://gumroad.com/l/chinese-nlp-mcp-pro"
+# 升级链接统一引用gumroad.py 的常量，禁止在业务代码里硬编码 URL。
+from .gumroad import UPGRADE_URL
+
+__all__ = ["UPGRADE_URL", "QuotaExceeded", "ProFeatureRequired"]
+
 RESET_AT_UTC = "00:00 UTC"
 
 _PRO_LINES = (

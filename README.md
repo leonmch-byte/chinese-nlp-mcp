@@ -108,6 +108,33 @@ python3 -m venv .venv
 > `words` 参数。传 `[]` 或 `None` 等同于不检测，直接返回
 > `{"matches": [], "clean": true}`。
 > 这是项目级设计红线：内容安全策略必须由使用者自己掌控，工具不得替他预设。
+
+### 免费层每日配额（v0.2.0 起）
+
+所有工具都可免费使用，但有每日次数上限（按 UTC 00:00 重置）：
+
+| 工具 | 每日上限 |
+|---|---|
+| `hello_world` | **无限制**（健康检查永不拦截） |
+| `segment_chinese` | 500 |
+| `convert_pinyin` | 300 |
+| `extract_keywords` | 100 |
+| `detect_sensitive_words` | 200 |
+
+单次输入上限：文本 20,000 字符、自定义词库 1,000 条、`topN` 最大 50。
+
+达到上限时该工具返回 `isError: true`，并附带当前限制、重置时间、
+Pro 权益与升级链接。`hello_world` 始终不受影响，避免客户端误判服务器故障。
+
+**🔒 完全离线**：本版本不做任何 License Key 在线校验，不发起网络请求，
+不发送任何数据。计数只保存在你本机的状态文件里。
+
+- Windows: `%LOCALAPPDATA%\chinese-nlp-mcp\`
+- macOS: `~/Library/Application Support/chinese-nlp-mcp/`
+- Linux: `$XDG_STATE_HOME/chinese-nlp-mcp/`
+
+需要更高额度与批量 API：<https://wolfmanchao.gumroad.com/l/chinese-nlp-mcp-pro>
+（$19 买断，非订阅）
 >
 > **重叠匹配策略：返回全部命中，不去重、不做最长/最短优先裁剪。**
 > 理由：调用方是自己词库的负责人，最清楚"命中什么"才是关心的信号。
