@@ -16,3 +16,9 @@ _dbg*.txt
 dist/
 build/
 *.egg-info/
+
+# 本地下载的工具二进制与临时备份（不提交）
+mcp-publisher.exe
+mcp-publisher
+mcp-publisher.tar.gz
+_readme_suspect_backup.md
