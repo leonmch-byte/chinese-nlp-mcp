@@ -13,7 +13,8 @@ P1 范围：**纯本地计量，不含任何网络请求**。
 3. 状态文件不含任何明文凭证。
 """
 
-from .errors import QuotaExceeded
+from .devices import MAX_DEVICES, check_device, known_machines, machine_id
+from .errors import ProFeatureRequired, QuotaExceeded
 from .paths import resolve_state_dir
 from .quota import FREE_LIMITS, FREE_MAX_TEXT_LEN, PAID_SOFT_CAP, QuotaGuard
 from .store import StateStore
@@ -21,6 +22,7 @@ from .tier import TierProvider
 
 __all__ = [
     "QuotaExceeded",
+    "ProFeatureRequired",
     "resolve_state_dir",
     "FREE_LIMITS",
     "FREE_MAX_TEXT_LEN",
@@ -28,6 +30,10 @@ __all__ = [
     "QuotaGuard",
     "StateStore",
     "TierProvider",
+    "check_device",
+    "known_machines",
+    "machine_id",
+    "MAX_DEVICES",
 ]
 
-__version__ = "0.1.1-p1a"
+__version__ = "0.1.1-p1d"

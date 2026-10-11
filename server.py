@@ -7,11 +7,12 @@
 2. 所有日志一律写 stderr；禁止 print 到 stdout（会污染 JSON-RPC 协议流）。
 3. 每个工具独立函数，统一错误处理，返回可读错误信息。
 4. detect_sensitive_words 只接受用户自定义词库，默认词库为空。
-5. 付费层 P1：纯本地计量，零网络请求。quota 异常由 FastMCP 转isError。
+5. 付费层 P1：纯本地计量，零网络请求。商业状态异常由 @wrap_quota 转ToolError。
 """
 
 from __future__ import annotations
 
+import functools
 import logging
 import os
 import sys
@@ -22,7 +23,10 @@ os.environ["FASTMCP_CHECK_FOR_UPDATES"] = "off"
 os.environ.setdefault("FASTMCP_SHOW_SERVER_BANNER", "false")
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 
+from licensing.devices import check_device
+from licensing.errors import ProFeatureRequired, QuotaExceeded
 from licensing.quota import QuotaGuard
 from licensing.store import StateStore
 from licensing.tier import TierProvider
@@ -90,10 +94,12 @@ def check_license() -> dict:
 # ---------------------------------------------------------------------------
 # 设计要点：
 # 1. hello_world **不接入**配额 —— 健康检查被拦会让客户端误判服务器故障。
-# 2. QuotaExceeded / ProFeatureRequired 均继承 ToolError（实测：走 FastMCP
-#    无前缀分支），因此这里只需让异常自然抛出，无需手工构造 isError 响应。
+# 2. QuotaExceeded / ProFeatureRequired 均继承 Exception（licensing/ 对 MCP 框架
+#    零依赖），由下面的 @wrap_quota 统一转 ToolError以拿到无前缀文案。
 # 3. QuotaGuard 内部除这两类异常外全部吞掉放行 —— 计数器故障不影响可用性。
 # 4. P1 无任何网络请求，tier 恒为 free。
+# 5. P1-d 设备记录**仅在 main() 启动时调用一次**，绝不接入任何工具函数：
+#    包括 hello_world —— 告警只写 stderr，不改变任何工具的 isError 状态。
 
 
 _state_store = StateStore()
@@ -101,6 +107,34 @@ _tier_provider = TierProvider()
 _quota = QuotaGuard(_state_store, _tier_provider)
 
 logger.info(f"licensing initialized: {_tier_provider.describe()}")
+
+
+# ---------------------------------------------------------------------------
+# @wrap_quota —— MCP 框架耦合的唯一出口
+# ---------------------------------------------------------------------------
+# 分层设计：licensing/ 对 MCP 框架零依赖（QuotaExceeded 只继承 Exception），
+# 但 FastMCP 4.1.0 对普通异常会加 "Error calling tool 'x': " 前缀，
+# 而四要素引导文案需要 Agent 读到**无前缀**的纯净文本
+# —— 实测只有 fastmcp.exceptions.ToolError 分支输出纯净文案。
+#
+# 因此本装饰器是唯一把「商业状态异常」翻译成「MCP 框架异常」的地方：
+#   QuotaExceeded / ProFeatureRequired  ->  ToolError（文案原样透出）
+#   其他异常                            ->  照常抛出，保持原有语义
+#
+# ⚠️ 用 functools.wraps 保留原函数元信息，否则 FastMCP 无法正确提取
+#    参数 schema（docstring 决定 description，签名决定 properties）。
+def wrap_quota(fn):
+    """把配额/权限异常转为 ToolError，保持引导文案无前缀。"""
+
+    @functools.wraps(fn)
+    def _wrapped(*args, **kwargs):
+        try:
+            return fn(*args, **kwargs)
+        except (QuotaExceeded, ProFeatureRequired) as exc:
+            logger.info(f"quota gate: {type(exc).__name__} for {fn.__name__}")
+            raise ToolError(str(exc)) from exc
+
+    return _wrapped
 
 
 # ---------------------------------------------------------------------------
@@ -121,6 +155,7 @@ def hello_world() -> str:
 
 
 @mcp.tool
+@wrap_quota
 def segment_chinese(text: str, mode: str = "default") -> list[str]:
     """对中文文本分词，返回词列表。
 
@@ -143,6 +178,7 @@ def segment_chinese(text: str, mode: str = "default") -> list[str]:
 
 
 @mcp.tool
+@wrap_quota
 def convert_pinyin(
     text: str, style: str = "tone", separator: str = " "
 ) -> str:
@@ -168,6 +204,7 @@ def convert_pinyin(
 
 
 @mcp.tool
+@wrap_quota
 def extract_keywords(text: str, topN: int = 10) -> list[dict]:
     """用 TF-IDF 从中文文本中提取关键词，按权重降序返回。
 
@@ -189,6 +226,7 @@ def extract_keywords(text: str, topN: int = 10) -> list[dict]:
 
 
 @mcp.tool
+@wrap_quota
 def detect_sensitive_words(
     text: str, words: list[str] | None = None
 ) -> dict:
@@ -226,6 +264,12 @@ def main() -> None:
 
     保持 stdio transport + 关闭 banner：纯本地运行、不开放端口、不联网。
     """
+    # P1-d 设备记录：仅在启动时检查一次（不接入任何工具函数）。
+    # check_device 保证永不抛异常、永不拒绝，只可能写一条 stderr 警告。
+    # 放在 mcp.run() 之前，保证告警出现在服务就绪之前。
+    _device_status = check_device()
+    logger.info(f"device check: {_device_status}")
+
     # transport="stdio" 是 fastmcp 的默认值，此处显式声明以表明意图。
     # show_banner=False 关闭 ASCII banner，纯本地运行不产生任何网络请求。
     logger.info("starting chinese-nlp-mcp on stdio transport")
