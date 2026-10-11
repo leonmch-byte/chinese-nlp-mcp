@@ -110,11 +110,15 @@ def check_device(env: dict | None = None, log_fn=log) -> dict:
 
     返回诊断信息（供测试与调试），不影响任何功能。
 
-    规则（用户指定）：
-      - 当前machine_id 在列表中        → 无事发生
-      - 不在列表且列表长度 < 3         → 加入列表，**不告警**
-      - 不在列表且列表长度 >= 3        → 告警（并加入列表）
-      - 每次成功调用不重复告警         → 因此只在启动/首次检查时告警
+    规则（D12：允许 3 个 machine_id）：
+      - 当前machine_id 在列表中        → 无事发生（不重复告警）
+      - 不在列表且加入前列表长度 < 3→ 加入列表，**不告警**（第 1/2/3 台）
+      - 不在列表且加入前列表长度 >= 3 → 仍加入，但告警（第 4 台起），
+                                        文案中的 N 为加入后的总台数
+      - 超过台数**绝不拒绝**，只告警
+
+      ⚠️ 阈值必须用**加入前**的长度：MAX_DEVICES=3 意味着「允许 3 台」，
+         若用加入后的长度判定，第 3 台就会被误告警，实际只允许 2 台。
 
     ``CHINESE_NLP_DEVICE_RESET=1``：
       - 清空 known_machines，只保留当前 machine_id
@@ -149,15 +153,18 @@ def check_device(env: dict | None = None, log_fn=log) -> dict:
             return result
 
         # ---- 3. 新机器 ----
+        # D12语义：「允许 3 个 machine_id」。
+        # 因此告警阈值用的是**加入前**的列表长度：
+        #   加入前 0/1/2 → 加入，不告警（第 1/2/3 台）
+        #   加入前 >= 3  → 仍加入，但告警（第 4 台起），文案中 N 为加入后的总数
+        before = len(known)
         known.append(mid)
         data["known_machines"] = known
         _save(data)
         result["reason"] = "new_machine"
 
-        # ---- 4. 达到上限才告警 ----
-        #注意：加入后长度为 len(known)。要求「不在列表且长度 >= 3」时告警，
-        # 这里用加入前的长度判断，与用户描述的语义一致。
-        if len(known) >= MAX_DEVICES:
+        # ---- 4. 超过允许台数才告警 ----
+        if before >= MAX_DEVICES:
             result["warned"] = True
             _warn(len(known))
         return result
