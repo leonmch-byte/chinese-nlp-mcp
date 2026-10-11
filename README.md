@@ -1,5 +1,7 @@
 # chinese-nlp-mcp
 
+mcp-name: io.github.leonmch-byte/chinese-nlp-mcp
+
 中文 NLP 能力的 MCP Server，面向海外开发者。本地 stdio 运行，纯离线推理。
 
 ## 特性

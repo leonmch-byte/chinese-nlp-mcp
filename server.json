@@ -1,19 +1,18 @@
 {
-  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-07-09/server.schema.json",
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.leonmch-byte/chinese-nlp-mcp",
-  "description": "Chinese NLP toolkit for MCP: word segmentation, pinyin conversion, TF-IDF keyword extraction, and custom sensitive-word detection. Fully offline via stdio.",
-  "status": "active",
+  "description": "Chinese NLP toolkit for MCP: segmentation, pinyin, keywords, sensitive words. Offline via stdio.",
   "repository": {
     "url": "https://github.com/leonmch-byte/chinese-nlp-mcp",
     "source": "github"
   },
-  "version": "0.1.0",
+  "version": "0.1.1",
   "packages": [
     {
-      "registry_type": "pypi",
-      "registry_base_url": "https://pypi.org",
+      "registryType": "pypi",
+      "registryBaseUrl": "https://pypi.org",
       "identifier": "chinese-nlp-mcp",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "transport": {
         "type": "stdio"
       }

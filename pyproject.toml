@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "chinese-nlp-mcp"
-version = "0.1.0"
+version = "0.1.1"
 description = "Chinese NLP capabilities as an MCP Server — segmentation, pinyin, TF-IDF keywords, and custom sensitive-word detection. Local stdio, fully offline."
 readme = "README.md"
 requires-python = ">=3.10"
