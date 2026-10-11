@@ -31,3 +31,12 @@ _readme_suspect_backup.md
 _pypi_token*.txt
 _github_token*.txt
 github_token*.txt
+
+# 内部设计文档（含商业策略，不进公开仓库）
+docs/
+design/
+*_design.md
+*-design.md
+
+# P1 本地验收脚本（不提交）
+_verify_p1*.py
