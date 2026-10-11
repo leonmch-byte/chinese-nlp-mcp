@@ -7,6 +7,21 @@
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-10-11
+
+修复 Official MCP Registry 发布校验失败。
+
+### 变更
+
+- README 标题下方新增 `mcp-name: io.github.leonmch-byte/chinese-nlp-mcp`，
+  用于通过 Registry 的 PyPI 包归属校验（ownership validation）。
+- 新增 MIT `LICENSE`（Copyright (c) 2026 leonmch-byte）。
+
+### 修复
+
+- `server.json` 迁移到官方 `2025-12-11` schema：字段改为 camelCase
+  （`registryType` / `registryBaseUrl`），移除已废弃的顶层 `status` 字段。
+
 ## [0.1.0] - 2026-10-10
 
 首个版本。5 个 MCP 工具全部实现并逐个独立验收。
@@ -44,5 +59,6 @@
 - hatchling 构建后端，Python >= 3.10。
 - 控制台入口 `chinese-nlp-mcp`，支持 `uvx chinese-nlp-mcp` 一键运行。
 
-[Unreleased]: https://github.com/leonmch-byte/chinese-nlp-mcp/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/leonmch-byte/chinese-nlp-mcp/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/leonmch-byte/chinese-nlp-mcp/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/leonmch-byte/chinese-nlp-mcp/releases/tag/v0.1.0

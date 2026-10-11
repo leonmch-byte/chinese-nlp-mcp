@@ -17,8 +17,17 @@ dist/
 build/
 *.egg-info/
 
+# 本地凭证（绝不入库）
+_pypi_token.txt
+_github_token.txt
+
 # 本地下载的工具二进制与临时备份（不提交）
 mcp-publisher.exe
 mcp-publisher
 mcp-publisher.tar.gz
 _readme_suspect_backup.md
+
+# token 文件（含命名变体，防误提交）
+_pypi_token*.txt
+_github_token*.txt
+github_token*.txt
