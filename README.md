@@ -166,6 +166,13 @@ python3 -m venv .venv
 > 3. **提交前必须用 `git status` 检查暂存区**，确认不含本地临时文件；
 >    **禁止 `git add -A` 后直接 commit**。本地取证脚本、stderr 日志等
 >    必须先确认已被 `.gitignore` 覆盖。
+> 4. **库行为 / 协议行为必须实测，不能凭记忆写断言。**
+>    反例：写`convert_pinyin` 断言时曾以为 `first_letter` 是"整词取首字母"，
+>    实测 pypinyin 是**逐字**处理 —— `中华` → `z h`（非 `zh`），
+>    `initials` 同理为 `zh h`。断言按直觉写会全盘皆错，而项目实现是对的。
+>    同类教训：`FastMCP 4.1.0` 对普通异常会加 `Error calling tool 'x': ` 前缀，
+>    只有 `ToolError` 分支输出纯净文案 —— 这也是靠 stdio 实测确认的。
+>    **任何第三方库或协议的返回值/异常语义，先跑一次最小实验验证，再写断言。**
 
 > `detect_sensitive_words` 刻意不内置任何词库。仅接受调用方传入的 `words`，
 > 返回 `{matches: [{word, index}], clean: bool}`。

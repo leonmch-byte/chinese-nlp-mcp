@@ -40,3 +40,4 @@ design/
 
 # P1 本地验收脚本（不提交）
 _verify_p1*.py
+_verify_p1c.py

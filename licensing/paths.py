@@ -1,7 +1,11 @@
 """跨平台状态目录解析。
 
-设计约束（用户明确指定）：
-- Windows: %APPDATA%\\chinese-nlp-mcp\\state.json
+设计约束（用户明确指定 + 修正 1）：
+- Windows: %LOCALAPPDATA%\\chinese-nlp-mcp\\state.json
+  ⚠️ **刻意不用 %APPDATA%**（Roaming）：Roaming 目录在企业环境下会随登录
+  同步到不同机器，导致同一份 state.json 出现在两台机器上，而 HMAC 签名
+  密钥绑定了 machine_id → 签名校验在第二台机器必然失败 → 误判为篡改。
+  LOCALAPPDATA 不参与漫游，从根上避免这个问题。
 - macOS:   ~/Library/Application Support/chinese-nlp-mcp/state.json
 - Linux:   $XDG_STATE_HOME/chinese-nlp-mcp/state.json，回退 ~/.local/state/...
 
@@ -35,8 +39,10 @@ def _select_root(os_name: str, platform: str, env: dict, home: str) -> str:
     home      用户主目录
     """
     if os_name == "nt":  # Windows
-        base = env.get("APPDATA")
-        root = base if base else f"{home}/AppData/Roaming"
+        # 刻意用 LOCALAPPDATA 而非 APPDATA：Roaming 会随登录跨机同步，
+        # 导致 state.json 出现在异机而 machine_id 不同 → 签名误判为篡改。
+        base = env.get("LOCALAPPDATA")
+        root = base if base else f"{home}/AppData/Local"
     elif platform == "darwin":  # macOS
         root = f"{home}/Library/Application Support"
     else:  # Linux / 其他

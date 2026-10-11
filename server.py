@@ -7,7 +7,7 @@
 2. 所有日志一律写 stderr；禁止 print 到 stdout（会污染 JSON-RPC 协议流）。
 3. 每个工具独立函数，统一错误处理，返回可读错误信息。
 4. detect_sensitive_words 只接受用户自定义词库，默认词库为空。
-5. 暂不做 license 校验，保留占位函数，恒返回 free 计划。
+5. 付费层 P1：纯本地计量，零网络请求。quota 异常由 FastMCP 转isError。
 """
 
 from __future__ import annotations
@@ -23,6 +23,9 @@ os.environ.setdefault("FASTMCP_SHOW_SERVER_BANNER", "false")
 
 from fastmcp import FastMCP
 
+from licensing.quota import QuotaGuard
+from licensing.store import StateStore
+from licensing.tier import TierProvider
 from tools.keywords import extract_keywords as _extract_keywords
 from tools.pinyin import convert_pinyin as _convert_pinyin
 from tools.segment import segment_chinese as _segment_chinese
@@ -76,9 +79,28 @@ def check_license() -> dict:
     """查询当前许可证计划。
 
     内部函数，暂不暴露为 MCP 工具。Day 1 占位实现：暂不校验，恒返回 free 计划。
+    P1 起由 TierProvider 提供真实 tier 判定（仍无网络请求）。
     """
     logger.info("check_license called -> plan=free (placeholder)")
     return {"plan": "free", "valid": True, "placeholder": True}
+
+
+# ---------------------------------------------------------------------------
+# 付费层闸门（P1-c 接入）
+# ---------------------------------------------------------------------------
+# 设计要点：
+# 1. hello_world **不接入**配额 —— 健康检查被拦会让客户端误判服务器故障。
+# 2. QuotaExceeded / ProFeatureRequired 均继承 ToolError（实测：走 FastMCP
+#    无前缀分支），因此这里只需让异常自然抛出，无需手工构造 isError 响应。
+# 3. QuotaGuard 内部除这两类异常外全部吞掉放行 —— 计数器故障不影响可用性。
+# 4. P1 无任何网络请求，tier 恒为 free。
+
+
+_state_store = StateStore()
+_tier_provider = TierProvider()
+_quota = QuotaGuard(_state_store, _tier_provider)
+
+logger.info(f"licensing initialized: {_tier_provider.describe()}")
 
 
 # ---------------------------------------------------------------------------
@@ -111,6 +133,7 @@ def segment_chinese(text: str, mode: str = "default") -> list[str]:
     Returns:
         分词结果列表。search / index 模式下 jieba 内部计算的位置信息不返回。
     """
+    _quota.check("segment_chinese", {"text": text, "mode": mode})
     return _segment_chinese(text=text, mode=mode)
 
 
@@ -134,6 +157,8 @@ def convert_pinyin(
     Returns:
         以 separator 拼接的拼音字符串。
     """
+    _quota.check("convert_pinyin",
+                 {"text": text, "style": style, "separator": separator})
     return _convert_pinyin(text=text, style=style, separator=separator)
 
 
@@ -154,6 +179,7 @@ def extract_keywords(text: str, topN: int = 10) -> list[dict]:
         形如 ``[{"word": "北京", "weight": 1.55}, ...]`` 的列表。
         weight 为 TF-IDF 原始分，未归一化，可大于 1.0。
     """
+    _quota.check("extract_keywords", {"text": text, "topN": topN})
     return _extract_keywords(text=text, topN=topN)
 
 
@@ -183,6 +209,7 @@ def detect_sensitive_words(
         {"matches": [{"word": str, "index": int}, ...], "clean": bool}。
         index 为词起始位置的字符索引（中文按 1 字计）。
     """
+    _quota.check("detect_sensitive_words", {"text": text, "words": words})
     return _detect_sensitive_words(text=text, words=words)
 
 
