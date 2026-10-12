@@ -41,3 +41,15 @@ design/
 # P1 本地验收脚本（不提交）
 _verify_p1*.py
 _verify_p1c.py
+
+# P3 Gumroad API 探测脚本与落盘证据（含响应原文，不提交）
+_probe_gumroad.py
+_p3_probe_*.json
+_p3_probe_summary.md
+_probe_*.py
+
+# P3 验收脚本（不提交）
+_verify_p3*.py
+
+# stdio 冒烟脚本（不提交）
+_smoke_stdio*.py

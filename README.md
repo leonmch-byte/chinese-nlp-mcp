@@ -3,6 +3,7 @@
 mcp-name: io.github.leonmch-byte/chinese-nlp-mcp
 
 中文 NLP 能力的 MCP Server，面向海外开发者。本地 stdio 运行，纯离线推理。
+未配置 license key 时**完全离线**：无网络请求、无遥测。
 
 ## 特性
 
@@ -126,8 +127,37 @@ python3 -m venv .venv
 达到上限时该工具返回 `isError: true`，并附带当前限制、重置时间、
 Pro 权益与升级链接。`hello_world` 始终不受影响，避免客户端误判服务器故障。
 
-**🔒 完全离线**：本版本不做任何 License Key 在线校验，不发起网络请求，
-不发送任何数据。计数只保存在你本机的状态文件里。
+### Pro License（v0.3.0 起）
+
+```bash
+export CHINESE_NLP_LICENSE_KEY=<你的 key>   # Windows: $env:CHINESE_NLP_LICENSE_KEY="..."
+```
+
+| 项目 | 值 |
+|---|---|
+| 验证频率 | 每次启动校验一次，结果缓存 24 小时 |
+| 断网宽限 | 7 天（上次成功验证在 7 天内且网络故障时保持 Pro） |
+| 超时 | 8 秒，不重试 |
+| 本地保存 | 默认**不保存**明文 key |
+
+**隐私**：验证请求只发送 `license_key` 与 `product_id`，不发送文本、工具名、
+调用计数、设备 ID 或任何遥测。本地缓存只存 `sha256(key)` 的前 16 位十六进制。
+
+如果你希望免去每次配环境变量，可显式同意把 key 存在本地
+（权限 0600 + HMAC 签名）：
+
+```bash
+export CHINESE_NLP_STORE_KEY=1
+```
+
+诊断用 `CHINESE_NLP_LICENSE_DEBUG=1`（tier 与缓存状态打到 stderr），
+自解锁用 `CHINESE_NLP_LICENSE_RESET=1`（清除本地缓存与凭证）。
+
+**License 失效是静默的**：不会弹窗、不会改变工具返回结构，
+只是退回免费层配额（表现为原有的配额超限文案）。
+
+**未配置 key 时行为与 0.2.0 完全一致：零网络请求、不发送任何数据。**
+计数只保存在你本机的状态文件里。
 
 - Windows: `%LOCALAPPDATA%\chinese-nlp-mcp\`
 - macOS: `~/Library/Application Support/chinese-nlp-mcp/`
@@ -200,9 +230,48 @@ Pro 权益与升级链接。`hello_world` 始终不受影响，避免客户端�
 >    同类教训：`FastMCP 4.1.0` 对普通异常会加 `Error calling tool 'x': ` 前缀，
 >    只有 `ToolError` 分支输出纯净文案 —— 这也是靠 stdio 实测确认的。
 >    **任何第三方库或协议的返回值/异常语义，先跑一次最小实验验证，再写断言。**
+> 5. **错误文案不引入新的用户可见概念。** 付费层失效一律**静默降级到免费层**，
+>    表现为原有的配额超限文案，而不是新造一个 "license invalid" 错误类型 ——
+>    用户不需要知道 license 出了什么问题，只需要工具还能用。
+> 6. **测试脚本自身的 bug 必须与实现 bug 区分开。**
+>    反例：P3 验收中因`from .gumroad import verify_license_online` 的绑定语义，
+>    monkeypatch 模块属性不生效，导致用例结论完全不可信。
+>    又因 `tier()` 的铁律是吞掉全部异常，无法用 `pytest.raises` 判断"是否联网"。
+>    **验证"某段代码有没有被调用"必须用调用计数，不能靠异常传播。**
+> 7. **请求构造必须基于实测。**
+>    不得因为"响应里有这个字段"就推测它也是请求参数。
+>    反例：Gumroad verify 响应里有 `purchase.can_contact`，
+>    曾据此往请求体里加 `can_contact: false` —— 但它其实是**响应**字段，
+>    探测脚本从未发送过。这类错误不会报错，只是静默发一个语义不明的字段。
+>    **新增任何请求参数前，必须先用探测脚本实测**真实 key 与无效 key
+>    两个分支均不返回异常；并用 `ALLOWED_REQUEST_FIELDS` 白名单断言兜住
+>    （集合不等即 `AssertionError`，开发期立刻爆，不留到线上）。
 
 > `detect_sensitive_words` 刻意不内置任何词库。仅接受调用方传入的 `words`，
 > 返回 `{matches: [{word, index}], clean: bool}`。
+
+## Privacy
+
+**Without a license key:** Fully offline. No network calls, no telemetry.
+Your text never leaves the machine.
+
+**With a Pro license key:** The key is verified against Gumroad once at
+startup, cached for 24 hours. Only `product_id` and `license_key` are sent.
+No text content, no usage statistics, no machine identifiers.
+
+Verification can be disabled entirely by not setting `CHINESE_NLP_LICENSE_KEY`.
+
+工具调用本身在两种情况下都**完全离线** —— 网络请求只发生在服务器启动时，
+且仅在配置了 license key 时。每24 小时至多一次。
+
+本地只保存 license key 的 SHA-256 摘要（前16 位十六进制），
+**不保存明文**。缓存、日志、错误信息中都不含明文 key、邮箱或 IP。
+
+> 这个项目是 MIT 开源的本地软件，**没有 DRM**。
+> 每日计数是防篡改（tamper-resistant）而非防破解（tamper-proof）——
+> 有决心的人总能从源码层面绕过任何本地机制。
+> 这与 README 其他地方描述的 Pro 权益并不矛盾：
+> 我们卖的是便利（批量 API、长文本、自定义词典），不是锁。
 
 ## 开发
 

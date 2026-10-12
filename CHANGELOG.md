@@ -7,6 +7,70 @@
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-12
+
+### Added
+
+- Pro license verification via Gumroad API. Requires CHINESE_NLP_LICENSE_KEY
+  environment variable. When unset, the server remains fully offline.
+- Local license cache with 24-hour TTL (paid) and 1-hour TTL (invalid).
+- 7-day offline grace period for transient network failures.
+- CHINESE_NLP_STORE_KEY=1 opt-in to persist license key in plaintext
+  (default: not persisted).
+
+### Changed
+
+- README updated to clarify network behavior: offline by default, one
+  network call at startup only when a license key is configured.
+
+<details>
+<summary>详细说明（中文）</summary>
+
+首次引入**唯一的一条出网请求**：当用户配置了 license key 时，
+服务器**启动时**向 Gumroad 校验一次。
+
+#### 行为变化
+
+- **未配置 key（默认）**：行为与 0.2.0 完全一致，**零网络请求**。
+- **配置了 key**：启动时校验一次，结果缓存 24h；
+  之后 24h 内每次启动都不联网，直接读缓存。
+- **断网宽限 7 天**：上次成功验证在 7 天内且网络故障 → 保持 Pro 功能。
+  HTTP 404 / 4xx / `success:false` / 退款 / 争议 / 拒付**一律立即降级，不给宽限**。
+- **license 失效是静默的**：不会抛错、不会弹窗、不改变任何工具的返回结构，
+  只是退回到免费层配额（表现为原有的配额超限文案）。
+- **无效 key 的缓存只保留 1 小时**（付费缓存 24h）——
+  输错 key 后立刻改对、或后台解封 key，最多等 1 小时。
+
+#### 配置方式
+
+```bash
+# 推荐：不落盘，由用户在 shell 里配
+export CHINESE_NLP_LICENSE_KEY=<你的 key>
+
+# 可选：明确同意把 key 存在本地（0600 + HMAC）
+export CHINESE_NLP_STORE_KEY=1
+
+# 诊断：把 tier / 缓存状态打到 stderr
+export CHINESE_NLP_LICENSE_DEBUG=1
+
+# 自解锁：清除本地缓存与凭证
+export CHINESE_NLP_LICENSE_RESET=1
+```
+
+⚠️ **默认不保存 key 明文**。隐私承诺要成立就得做到这一点 ——
+HMAC 只防篡改不防读取，状态目录可能被云盘同步或备份软件扫描。
+本地缓存只存 `sha256(key)` 的前 16 位十六进制，**永不存明文**。
+
+#### 隐私
+
+验证请求**只发送 `license_key` 与 `product_id` 两个字段**，
+不发送任何用户数据（文本、工具名、调用计数、设备 ID、遥测一律不上报）。
+
+缓存与日志中**永不出现**明文 key、邮箱、referrer、IP 国家 —— 这些字段
+在 Gumroad 响应里确实存在，实现按字段白名单挑取，不整体落盘或打日志。
+
+</details>
+
 ## [0.2.0] - 2026-10-11
 
 P1 付费层 —— 本地计量（⚠️ 行为变化，升级必读）。
@@ -129,7 +193,8 @@ P1 引入**每日调用配额**。所有工具仍然免费可用，只是有次�
 - hatchling 构建后端，Python >= 3.10。
 - 控制台入口 `chinese-nlp-mcp`，支持 `uvx chinese-nlp-mcp` 一键运行。
 
-[Unreleased]: https://github.com/leonmch-byte/chinese-nlp-mcp/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/leonmch-byte/chinese-nlp-mcp/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/leonmch-byte/chinese-nlp-mcp/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/leonmch-byte/chinese-nlp-mcp/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/leonmch-byte/chinese-nlp-mcp/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/leonmch-byte/chinese-nlp-mcp/releases/tag/v0.1.0

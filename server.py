@@ -7,7 +7,12 @@
 2. 所有日志一律写 stderr；禁止 print 到 stdout（会污染 JSON-RPC 协议流）。
 3. 每个工具独立函数，统一错误处理，返回可读错误信息。
 4. detect_sensitive_words 只接受用户自定义词库，默认词库为空。
-5. 付费层 P1：纯本地计量，零网络请求。商业状态异常由 @wrap_quota 转ToolError。
+5. 付费层：商业状态异常由 @wrap_quota 转 ToolError。
+6. **P3起可能发出唯一的网络请求**：启动时向 Gumroad 验证 license key
+   （仅当用户配置了 CHINESE_NLP_LICENSE_KEY 时）。24h 缓存，
+   工具调用热路径零网络、零磁盘 I/O。未配置 key 时行为与 P1 完全一致（纯离线）。
+7. **license 验证只在 main() 启动时执行一次**，绝不接入任何工具函数
+   （含 hello_world），结果缓存到模块级 ``_tier``。
 """
 
 from __future__ import annotations
@@ -27,9 +32,9 @@ from fastmcp.exceptions import ToolError
 
 from licensing.devices import check_device
 from licensing.errors import ProFeatureRequired, QuotaExceeded
+from licensing.license import LicenseVerifier
 from licensing.quota import QuotaGuard
 from licensing.store import StateStore
-from licensing.tier import TierProvider
 from tools.keywords import extract_keywords as _extract_keywords
 from tools.pinyin import convert_pinyin as _convert_pinyin
 from tools.segment import segment_chinese as _segment_chinese
@@ -68,45 +73,89 @@ mcp = FastMCP(
     name="chinese-nlp-mcp",
     instructions=(
         "中文 NLP 能力包：分词、关键词提取、拼音转换、自定义敏感词检测。"
-        "所有工具均为纯本地推理，不发起网络请求。"
+        "所有工具均为纯本地推理。\n"
+        "隐私：未配置 license key 时完全离线，无网络请求、无遥测，"
+        "文本永不离开本机；配置了 Pro key 时，仅在启动时向 Gumroad 校验一次"
+        "（缓存 24 小时），只发送 product_id 与 license_key，"
+        "不发送文本内容、使用统计或设备标识。工具调用本身始终完全离线。"
     ),
 )
 
 
 # ---------------------------------------------------------------------------
-# License 占位（Day 1 不做校验）
+# License 查询
 # ---------------------------------------------------------------------------
-# 刻意不注册为 MCP 工具：付费层方案未定，Day 6 再决定是否对外暴露。
+# 刻意不注册为 MCP 工具：工具列表是 Registry 展示面，
+# 暴露 license 查询会引导用户频繁调用它（而它不是能力入口）。
+# 需要诊断时用环境变量 CHINESE_NLP_LICENSE_DEBUG=1，
+# main() 会把 status() 打到 stderr。
 
 
 def check_license() -> dict:
-    """查询当前许可证计划。
+    """查询当前 tier 的本地快照（不联网）。
 
-    内部函数，暂不暴露为 MCP 工具。Day 1 占位实现：暂不校验，恒返回 free 计划。
-    P1 起由 TierProvider 提供真实 tier 判定（仍无网络请求）。
+    读的是 main() 启动时算好的模块级 ``_tier``，**不发任何网络请求** ——
+    即使传了真key 也不会重新验证（要重新验证请重启进程，或清license_cache.json）。
     """
-    logger.info("check_license called -> plan=free (placeholder)")
-    return {"plan": "free", "valid": True, "placeholder": True}
+    status = _license_verifier.status()
+    return {
+        "tier": _tier,
+        "valid": _tier == "paid",
+        "cache_ttl_hours": status.get("cache_ttl_hours"),
+        "grace_days": status.get("grace_days"),
+        "cache_verified_at": status.get("cache_verified_at"),
+        "sale_id": status.get("sale_id"),
+    }
 
 
 # ---------------------------------------------------------------------------
-# 付费层闸门（P1-c 接入）
+# 付费层闸门（P1-c 接入，P3 接 license）
 # ---------------------------------------------------------------------------
 # 设计要点：
 # 1. hello_world **不接入**配额 —— 健康检查被拦会让客户端误判服务器故障。
 # 2. QuotaExceeded / ProFeatureRequired 均继承 Exception（licensing/ 对 MCP 框架
 #    零依赖），由下面的 @wrap_quota 统一转 ToolError以拿到无前缀文案。
 # 3. QuotaGuard 内部除这两类异常外全部吞掉放行 —— 计数器故障不影响可用性。
-# 4. P1 无任何网络请求，tier 恒为 free。
-# 5. P1-d 设备记录**仅在 main() 启动时调用一次**，绝不接入任何工具函数：
+# 4. P1-d 设备记录**仅在 main() 启动时调用一次**，绝不接入任何工具函数：
 #    包括 hello_world —— 告警只写 stderr，不改变任何工具的 isError 状态。
-
+# 5. **P3：license 验证同样只在 main() 启动时执行一次**，
+#    绝不接入任何工具函数、绝不在每次 tools/call 时读文件或发网络请求。
+#    启动结果写进模块级``_tier``，QuotaGuard 通过下面的
+#    ``_tier_provider`` 对象读内存值 —— 每次调用零I/O。
 
 _state_store = StateStore()
-_tier_provider = TierProvider()
+
+#: 启动时验证一次得到的 tier 值（"free" / "paid"）。
+#: 初始为 "free"（保守）；main() 启动时若配置了 license 会被覆写。
+_tier: str = "free"
+
+
+class _StartupTierProvider:
+    """把启动时算好的 tier 交给 QuotaGuard。
+
+    为什么不在每次调用时调 ``LicenseVerifier.tier()``：
+    - 会每次读 license_cache.json（磁盘 I/O），而 24h 内结果本就不会变；
+    - ``tier()`` 内部有进程内记忆，但多一层调用没收益；
+    - 万一将来缓存逻辑变动，也不会在工具调用的热路径上引入意外 I/O。
+
+    这是最小实现：只读一个模块级字符串，永不抛异常。
+    """
+
+    def tier(self) -> str:
+        return _tier
+
+    def is_paid(self) -> bool:
+        return _tier == "paid"
+
+    def describe(self) -> dict:
+        return {"tier": _tier, "source": "startup-verified"}
+
+
+_tier_provider = _StartupTierProvider()
+_license_verifier = LicenseVerifier()
 _quota = QuotaGuard(_state_store, _tier_provider)
 
-logger.info(f"licensing initialized: {_tier_provider.describe()}")
+logger.info("licensing initialized (tier=free, pending startup license check)")
 
 
 # ---------------------------------------------------------------------------
@@ -262,8 +311,23 @@ def main() -> None:
     PyPI 入口点 ``chinese-nlp-mcp = "server:main"`` 绑定到此函数，
     使用户可直接 ``uvx chinese-nlp-mcp`` 或 ``chinese-nlp-mcp`` 启动。
 
-    保持 stdio transport + 关闭 banner：纯本地运行、不开放端口、不联网。
+    保持 stdio transport + 关闭 banner：纯本地运行、不开放端口。
     """
+    # P3 license 验证：**仅在启动时执行一次**，绝不接入任何工具函数。
+    #
+    # 为什么放这里而不是装饰器里：
+    # - 24h 缓存意味着每次启动最多一次网络请求，工具调用热路径零I/O；
+    # - LicenseVerifier.tier() 的铁律是永不抛异常、永不返回 None、最多阻塞 8s，
+    #   即便验证彻底失败也只是静默降级到 free，绝不影响服务器可用性；
+    # - hello_world 也不接入 —— 健康检查必须永远可用。
+    global _tier
+    try:
+        _tier = _license_verifier.tier()
+        logger.info(f"license check: {_license_verifier.status()}")
+    except Exception as exc:  # noqa: BLE001 — 兜底，绝不阻断启动
+        logger.warning(f"license check failed, serving free tier ({type(exc).__name__})")
+        _tier = "free"
+
     # P1-d 设备记录：仅在启动时检查一次（不接入任何工具函数）。
     # check_device 保证永不抛异常、永不拒绝，只可能写一条 stderr 警告。
     # 放在 mcp.run() 之前，保证告警出现在服务就绪之前。
@@ -271,8 +335,8 @@ def main() -> None:
     logger.info(f"device check: {_device_status}")
 
     # transport="stdio" 是 fastmcp 的默认值，此处显式声明以表明意图。
-    # show_banner=False 关闭 ASCII banner，纯本地运行不产生任何网络请求。
-    logger.info("starting chinese-nlp-mcp on stdio transport")
+    # show_banner=False 关闭 ASCII banner。
+    logger.info(f"starting chinese-nlp-mcp on stdio transport (tier={_tier})")
     mcp.run(transport="stdio", show_banner=False)
 
 

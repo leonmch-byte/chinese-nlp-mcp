@@ -22,6 +22,7 @@ from pathlib import Path
 APP_DIRNAME = "chinese-nlp-mcp"
 STATE_FILENAME = "state.json"
 LICENSE_FILENAME = "license.json"
+LICENSE_CACHE_FILENAME = "license_cache.json"
 DICT_DIRNAME = "dictionaries"
 
 _OVERRIDE_ENV = "CHINESE_NLP_STATE_DIR"
@@ -76,7 +77,16 @@ def state_file_path() -> Path:
 
 
 def license_file_path() -> Path:
+    """本地 license 凭证（**仅当 CHINESE_NLP_STORE_KEY=1 时才存在**）。
+
+    默认不存明文 key —— 见 `license.py` 的 D2 决策。
+    """
     return resolve_state_dir() / LICENSE_FILENAME
+
+
+def license_cache_path() -> Path:
+    """license 验证缓存。**永远不含明文 key**，只含 key 摘要 + 验证结论。"""
+    return resolve_state_dir() / LICENSE_CACHE_FILENAME
 
 
 def dictionaries_dir() -> Path:
