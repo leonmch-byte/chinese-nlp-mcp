@@ -7,6 +7,19 @@
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-10-12
+
+### Changed
+
+- Refactored README: moved development notes (testing rules, implementation
+  details, lessons learned) to DEVELOPMENT.md. README now targets end users
+  only.
+- Corrected offline claim: now "offline by default" (accurate since v0.3.0
+  introduces one network call at startup when a license key is configured).
+- Added Documentation link in project_urls.
+- Fixed Python version requirement mismatch (README said 3.13+, metadata says
+  >=3.10).
+
 ## [0.3.0] - 2026-10-12
 
 ### Added
@@ -193,7 +206,8 @@ P1 引入**每日调用配额**。所有工具仍然免费可用，只是有次�
 - hatchling 构建后端，Python >= 3.10。
 - 控制台入口 `chinese-nlp-mcp`，支持 `uvx chinese-nlp-mcp` 一键运行。
 
-[Unreleased]: https://github.com/leonmch-byte/chinese-nlp-mcp/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/leonmch-byte/chinese-nlp-mcp/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/leonmch-byte/chinese-nlp-mcp/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/leonmch-byte/chinese-nlp-mcp/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/leonmch-byte/chinese-nlp-mcp/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/leonmch-byte/chinese-nlp-mcp/compare/v0.1.0...v0.1.1

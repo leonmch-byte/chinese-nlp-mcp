@@ -2,21 +2,20 @@
 
 mcp-name: io.github.leonmch-byte/chinese-nlp-mcp
 
-中文 NLP 能力的 MCP Server，面向海外开发者。本地 stdio 运行，纯离线推理。
-未配置 license key 时**完全离线**：无网络请求、无遥测。
+中文 NLP 能力的 MCP Server：分词、关键词提取、拼音转换、自定义敏感词检测。
+本地 stdio 运行，全部推理在进程内完成。
 
 📝 **Tutorial:** [How to Add Chinese NLP to Your AI Agent in 5 Minutes](https://dev.to/leonmch/how-to-add-chinese-nlp-to-your-ai-agent-in-5-minutes-57l6)
 
 ## 特性
 
+- **纯本地推理** — 未配置 license key 时零网络请求、无遥测，文本不离开本机
 - **stdio transport** — 本地进程通信，不开放任何端口
-- **纯本地** — 关闭 fastmcp 版本检查，启动零网络请求
-- **协议安全** — 日志一律写 stderr，绝不污染 stdout 的 JSON-RPC 流
+- **协议干净** — 日志一律走 stderr，不污染 stdout 的 JSON-RPC 流
 
 ## 环境要求
 
-- Python 3.13+
-- 依赖装在项目专用 venv，不污染系统 Python
+Python 3.10 或更高版本。
 
 ## 安装
 
@@ -93,26 +92,72 @@ python3 -m venv .venv
 }
 ```
 
-## 工具
+> VS Code 用 `servers` 键，Claude Desktop / Cursor 用 `mcpServers` 键。
 
-### 已实现工具
+## 工具
 
 | 工具 | 签名 | 说明 |
 |---|---|---|
 | `hello_world` | `() -> str` | 健康检查，返回 `Hello from Chinese NLP MCP` |
-| `segment_chinese` | `(text: str, mode: str = "default") -> list[str]` | jieba 分词，`mode` 支持 `default` / `search` / `index` |
-| `convert_pinyin` | `(text: str, style: str = "tone", separator: str = " ") -> str` | pypinyin 拼音转换，`style` 支持 `tone` / `tone2` / `initials` / `first_letter` |
+| `segment_chinese` | `(text: str, mode: str = "default") -> list[str]` | 中文分词，`mode` 支持 `default` / `search` / `index` |
+| `convert_pinyin` | `(text: str, style: str = "tone", separator: str = " ") -> str` | 拼音转换，`style` 支持 `tone` / `tone2` / `initials` / `first_letter` |
 | `extract_keywords` | `(text: str, topN: int = 10) -> list[dict]` | TF-IDF 关键词提取，返回 `[{word, weight}]`，按权重降序 |
-| `detect_sensitive_words` | `(text: str, words: list[str] \| None = None) -> dict` | **自定义**敏感词检测，Aho-Corasick 自动机 |
+| `detect_sensitive_words` | `(text: str, words: list[str] \| None = None) -> dict` | 自定义敏感词检测（Aho-Corasick 自动机） |
 
-> 🔴 **`detect_sensitive_words` 红线（不可协商）**
+> 🔴 **`detect_sensitive_words` 不含任何内置词库**
 >
-> 本工具**不含任何内置词库，也不内置任何示例词**。词库唯一来源是调用方传入的
+> 本工具**不内置任何词库，也不内置任何示例词**。词库唯一来源是调用方传入的
 > `words` 参数。传 `[]` 或 `None` 等同于不检测，直接返回
 > `{"matches": [], "clean": true}`。
-> 这是项目级设计红线：内容安全策略必须由使用者自己掌控，工具不得替他预设。
+> 内容安全策略必须由使用者自己掌控，工具不会替他预设。
 
-### 免费层每日配额（v0.2.0 起）
+### 你需要知道的行为细节
+
+这些直接影响你怎么解析返回值，所以列在这里。
+
+**`detect_sensitive_words` — 重叠匹配返回全部命中**
+
+不去重、不做最长/最短优先裁剪。调用方是自己词库的负责人，
+最清楚"命中什么"才是关心的信号；拿到全部命中后可按 `index` 自行裁剪或聚合。
+
+例：`text="中华人民共和国"`, `words=["中国人民","人民"]` → 返回 2 条命中，
+`index` 分别为 `0` 和 `2`。`index` 是**字符索引**（中文按 1 字计，非字节索引）。
+
+**`extract_keywords` — `weight` 是未归一化的 TF-IDF 原始分**
+
+值域通常 0 ~ 6，**可大于 1.0**（例："天安门广场" → 1.6316）。
+它表示该词在当前语料中的重要程度，**不是概率或百分比**。
+
+返回顺序已按权重降序；`topN` 超过可提取词数时返回全部词，不报错。
+中英混合文本中，英文单词会作为独立 token 保留并参与计算，不会被过滤
+（例：`Python 编程语言很强大` → 提取出 `Python`，weight 3.98）。
+
+**`convert_pinyin` — `tone2` 的数字标在元音后**
+
+`zhong` → `zho1ng`，不是 `zhong1`。这是 pypinyin 的既有命名规则。
+`style` 只接受上表四个值，传入其他值会抛错（底层库本会静默降级，
+本项目在入口处拦下，避免你拿到"看起来对但不是你要的结果"）。
+
+**`segment_chinese` — `index` 与 `search` 行为一致**
+
+jieba 没有独立的 index 模式，本项目把 `index` 映射为搜索模式。
+两种模式都不返回位置信息，返回值统一是 `list[str]`。
+
+**返回值怎么读**
+
+返回 `dict` 的工具（`detect_sensitive_words`）会被 fastmcp **直接展开**为
+`structuredContent`，**不额外加 `result` 包装层**；
+返回 `list` / `str` 的工具则会被包成 `structuredContent.result`。
+
+例：从 `structuredContent.matches` 与 `structuredContent.clean` 取值，
+而不是 `structuredContent.result.matches`。
+
+**错误处理**
+
+参数非法抛 `ValueError`，内部失败抛 `RuntimeError`，
+均由 fastmcp 转成 `isError=true`，工具签名保持纯净。
+
+## 免费层每日配额（v0.2.0 起）
 
 所有工具都可免费使用，但有每日次数上限（按 UTC 00:00 重置）：
 
@@ -129,7 +174,7 @@ python3 -m venv .venv
 达到上限时该工具返回 `isError: true`，并附带当前限制、重置时间、
 Pro 权益与升级链接。`hello_world` 始终不受影响，避免客户端误判服务器故障。
 
-### Pro License（v0.3.0 起）
+## Pro License（v0.3.0 起）
 
 ```bash
 export CHINESE_NLP_LICENSE_KEY=<你的 key>   # Windows: $env:CHINESE_NLP_LICENSE_KEY="..."
@@ -141,9 +186,6 @@ export CHINESE_NLP_LICENSE_KEY=<你的 key>   # Windows: $env:CHINESE_NLP_LICENS
 | 断网宽限 | 7 天（上次成功验证在 7 天内且网络故障时保持 Pro） |
 | 超时 | 8 秒，不重试 |
 | 本地保存 | 默认**不保存**明文 key |
-
-**隐私**：验证请求只发送 `license_key` 与 `product_id`，不发送文本、工具名、
-调用计数、设备 ID 或任何遥测。本地缓存只存 `sha256(key)` 的前 16 位十六进制。
 
 如果你希望免去每次配环境变量，可显式同意把 key 存在本地
 （权限 0600 + HMAC 签名）：
@@ -158,8 +200,7 @@ export CHINESE_NLP_STORE_KEY=1
 **License 失效是静默的**：不会弹窗、不会改变工具返回结构，
 只是退回免费层配额（表现为原有的配额超限文案）。
 
-**未配置 key 时行为与 0.2.0 完全一致：零网络请求、不发送任何数据。**
-计数只保存在你本机的状态文件里。
+每日计数保存在你本机的状态文件里：
 
 - Windows: `%LOCALAPPDATA%\chinese-nlp-mcp\`
 - macOS: `~/Library/Application Support/chinese-nlp-mcp/`
@@ -167,90 +208,6 @@ export CHINESE_NLP_STORE_KEY=1
 
 需要更高额度与批量 API：<https://wolfmanchao.gumroad.com/l/chinese-nlp-mcp-pro>
 （$19 买断，非订阅）
->
-> **重叠匹配策略：返回全部命中，不去重、不做最长/最短优先裁剪。**
-> 理由：调用方是自己词库的负责人，最清楚"命中什么"才是关心的信号。
-> 若工具替他裁剪（例如只留最长匹配），他既无法知道被裁掉的短词也命中了，
-> 也无法对重叠区间做差异化处置。拿到全部命中后，调用方完全可以按 `index`
-> 自行裁剪或聚合，而工具不做这个预设立场。
->
-> 例：`text="中华人民共和国"`, `words=["中国人民","人民"]`
-> → 返回 2 条命中，`index` 分别为 `0` 和 `2`。
->
-> **实现方案**：pyahocorasick（实测 Windows + Python 3.13 有预编译 wheel，
-> 无需本地编译；4813 词库 × 10 万字文本耗时 0.008 秒）。
-> `index` 是**字符索引**（中文按 1 字计，非字节索引）。
->
-> **返回值读取方式**：本工具返回 `dict`，fastmcp 会将其**直接展开**为
-> `structuredContent`，**不额外加 `result` 包装层**（这与返回 `list`/`str` 的
-> 工具不同，后者会被包成 `structuredContent.result`）。
-> 调用方应从 `structuredContent.matches` 与 `structuredContent.clean` 取值。
-
-> **`extract_keywords` 说明**：
-> - 底层 jieba 的参数名是 `topK`（非 `topN`），且需 `withWeight=True` 才会返回权重。
-> - `weight` 是 **TF-IDF 原始分，未归一化**，值域通常 0 ~ 6，**可大于 1.0**
->   （例："天安门广场" → 1.6316）。它表示该词在当前语料中的重要程度，
->   不是概率或百分比。
-> - 返回顺序已按权重降序；`topN` 超过可提取词数时返回全部词，**不报错**。
-> - 本工具是四个业务工具中唯一返回 `list[dict]` 的，属有意设计。
-> - **中英混合文本中，英文单词会被 jieba 作为独立 token 保留并参与 TF-IDF 计算，
->   不会被过滤**（例：`Python 编程语言很强大` → 提取出 `Python`，weight 3.98）。
-
-> **`style` 四种风格说明**：实测 pypinyin 0.55.0 的 `lazy_pinyin(text, style="bad")`
-> **不会报错**，而是静默降级为 `Style.NORMAL`（带调拼音）。因此本工具在入口处
-> 强制白名单校验，不把非法style 透传给底层库。
->
-> 取值参考：`tone` → `zhōng`、`tone2` → `zho1ng`、`initials` → `zh`、`first_letter` → `z`。
->
-> **`tone2` 标注规则**：遵循 pypinyin 原生命名规则，声调数字标注在**元音后**
-> （如 `zho1ng`），而非词尾（`zhong1`）。这是 pypinyin 的既有行为，非缺陷。
-
-> **`mode` 三模式说明**：jieba 0.42.1 顶层**没有** `cut_for_index`，
-> 且 `tokenize(mode=...)` 内部只区分 `default` 与"其他"，传 `index` 会
-> **静默降级为 search**。本项目显式将 `index` 映射到 `cut_for_search`，
-> 行为与 `search` 一致，避免给调用方"index 是独立模式"的错觉。
->
-> `search` / `index` 下jieba 内部计算的 `(word, start, end)` 位置信息**不返回**，
-> 返回值统一为 `list[str]`。
-
-> **错误处理**：参数非法抛 `ValueError`，内部失败抛 `RuntimeError`，
-> 均由 fastmcp 转成 `isError=true`，工具签名保持纯净、不返回错误包装体。
-
-> **测试规约**（Day 3 锁定）：
-> 1. 反例必须同时断言 `isError=true` **且** 错误文案包含预期片段。只看标志位会漏过
->    "底层库静默降级"类回归——错误可能被包装成别的异常，`isError` 照样为true。
-> 2. stdio 子进程的 `stderr` 必须接文件或 `DEVNULL`，**绝不接 `subprocess.PIPE`**。
->    fastmcp 报错时 rich 会打印几十 KB traceback，塞满管道会导致 server 侧写阻塞、
->    响应永远发不出（表现为假死/超时，而非真实崩溃）。
-> 3. **提交前必须用 `git status` 检查暂存区**，确认不含本地临时文件；
->    **禁止 `git add -A` 后直接 commit**。本地取证脚本、stderr 日志等
->    必须先确认已被 `.gitignore` 覆盖。
-> 4. **库行为 / 协议行为必须实测，不能凭记忆写断言。**
->    反例：写`convert_pinyin` 断言时曾以为 `first_letter` 是"整词取首字母"，
->    实测 pypinyin 是**逐字**处理 —— `中华` → `z h`（非 `zh`），
->    `initials` 同理为 `zh h`。断言按直觉写会全盘皆错，而项目实现是对的。
->    同类教训：`FastMCP 4.1.0` 对普通异常会加 `Error calling tool 'x': ` 前缀，
->    只有 `ToolError` 分支输出纯净文案 —— 这也是靠 stdio 实测确认的。
->    **任何第三方库或协议的返回值/异常语义，先跑一次最小实验验证，再写断言。**
-> 5. **错误文案不引入新的用户可见概念。** 付费层失效一律**静默降级到免费层**，
->    表现为原有的配额超限文案，而不是新造一个 "license invalid" 错误类型 ——
->    用户不需要知道 license 出了什么问题，只需要工具还能用。
-> 6. **测试脚本自身的 bug 必须与实现 bug 区分开。**
->    反例：P3 验收中因`from .gumroad import verify_license_online` 的绑定语义，
->    monkeypatch 模块属性不生效，导致用例结论完全不可信。
->    又因 `tier()` 的铁律是吞掉全部异常，无法用 `pytest.raises` 判断"是否联网"。
->    **验证"某段代码有没有被调用"必须用调用计数，不能靠异常传播。**
-> 7. **请求构造必须基于实测。**
->    不得因为"响应里有这个字段"就推测它也是请求参数。
->    反例：Gumroad verify 响应里有 `purchase.can_contact`，
->    曾据此往请求体里加 `can_contact: false` —— 但它其实是**响应**字段，
->    探测脚本从未发送过。这类错误不会报错，只是静默发一个语义不明的字段。
->    **新增任何请求参数前，必须先用探测脚本实测**真实 key 与无效 key
->    两个分支均不返回异常；并用 `ALLOWED_REQUEST_FIELDS` 白名单断言兜住
->    （集合不等即 `AssertionError`，开发期立刻爆，不留到线上）。
-
-> `detect_sensitive_words` 刻意不内置任何词库。仅接受调用方传入的 `words`，
-> 返回 `{matches: [{word, index}], clean: bool}`。
 
 ## Privacy
 
@@ -264,43 +221,19 @@ No text content, no usage statistics, no machine identifiers.
 Verification can be disabled entirely by not setting `CHINESE_NLP_LICENSE_KEY`.
 
 工具调用本身在两种情况下都**完全离线** —— 网络请求只发生在服务器启动时，
-且仅在配置了 license key 时。每24 小时至多一次。
+且仅在配置了 license key 时。每 24 小时至多一次。
 
-本地只保存 license key 的 SHA-256 摘要（前16 位十六进制），
+本地只保存 license key 的 SHA-256 摘要（前 16 位十六进制），
 **不保存明文**。缓存、日志、错误信息中都不含明文 key、邮箱或 IP。
 
 > 这个项目是 MIT 开源的本地软件，**没有 DRM**。
 > 每日计数是防篡改（tamper-resistant）而非防破解（tamper-proof）——
 > 有决心的人总能从源码层面绕过任何本地机制。
-> 这与 README 其他地方描述的 Pro 权益并不矛盾：
 > 我们卖的是便利（批量 API、长文本、自定义词典），不是锁。
 
 ## 开发
 
-验收统一走 Inspector 手工验证：
-
-```bash
-npx @modelcontextprotocol/inspector \
-  ./.venv/Scripts/python.exe server.py
-```
-
-浏览器打开提示的地址（默认 http://localhost:6274），在 Tools 面板即可看到并调用工具。
-
-### Day 2 状态
-
-| 工具 | 状态 | 说明 |
-|---|---|---|
-| `segment_chinese` | ✅ 已实现 | jieba 三模式（default / search / index），mode 白名单校验 |
-
-## 路线图
-
-- [x] Day 1 — 项目骨架 + `hello_world` + Inspector 验收
-- [x] Day 2 — `segment_chinese`（jieba 三模式）
-- [x] Day 3 — `convert_pinyin`（pypinyin 四 style）
-- [x] Day 4 — `extract_keywords`（TF-IDF）
-- [x] Day 5 — `detect_sensitive_words`（Aho-Corasick）
-
-每个工具独立实现、独立验收、独立提交。
+验收方式、测试规约、实现层踩坑记录见 [DEVELOPMENT.md](DEVELOPMENT.md)。
 
 ## License
 

@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "chinese-nlp-mcp"
-version = "0.3.0"
-description = "Chinese NLP capabilities as an MCP Server — segmentation, pinyin, TF-IDF keywords, and custom sensitive-word detection. Local stdio, fully offline."
+version = "0.3.1"
+description = "Chinese NLP capabilities as an MCP Server — segmentation, pinyin, TF-IDF keywords, and custom sensitive-word detection. Local stdio, offline by default."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
@@ -47,6 +47,7 @@ Homepage = "https://github.com/leonmch-byte/chinese-nlp-mcp"
 Repository = "https://github.com/leonmch-byte/chinese-nlp-mcp"
 Issues = "https://github.com/leonmch-byte/chinese-nlp-mcp/issues"
 Changelog = "https://github.com/leonmch-byte/chinese-nlp-mcp/blob/main/CHANGELOG.md"
+Documentation = "https://dev.to/leonmch/how-to-add-chinese-nlp-to-your-ai-agent-in-5-minutes-57l6"
 
 [project.scripts]
 chinese-nlp-mcp = "server:main"
