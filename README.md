@@ -5,6 +5,8 @@ mcp-name: io.github.leonmch-byte/chinese-nlp-mcp
 中文 NLP 能力的 MCP Server，面向海外开发者。本地 stdio 运行，纯离线推理。
 未配置 license key 时**完全离线**：无网络请求、无遥测。
 
+📝 **Tutorial:** [How to Add Chinese NLP to Your AI Agent in 5 Minutes](https://dev.to/leonmch/how-to-add-chinese-nlp-to-your-ai-agent-in-5-minutes-57l6)
+
 ## 特性
 
 - **stdio transport** — 本地进程通信，不开放任何端口
